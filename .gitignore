@@ -1,0 +1,25 @@
+# Secrets
+.env
+
+# Build artifacts
+build/
+app/dist/
+app/release/
+app/node_modules/
+
+# Whisper models (large binary files)
+models/
+
+# Cached data
+bible_cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Third-party source (submodule or vendored)
+third_party/

@@ -1,0 +1,125 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            platform: mac
+            arch: arm64
+          - os: macos-13
+            platform: mac
+            arch: x64
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x64
+          - os: windows-latest
+            platform: win
+            arch: x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # ── System dependencies ──────────────────────────────────
+
+      - name: Install deps (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev
+
+      - name: Install deps (Windows)
+        if: matrix.platform == 'win'
+        run: choco install curl --yes
+
+      # macOS has curl and cmake preinstalled on GitHub runners.
+
+      # ── Build C++ binary ─────────────────────────────────────
+
+      - name: Build C++ binary
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+
+      - name: Verify binary exists
+        shell: bash
+        run: |
+          if [ "${{ matrix.platform }}" = "win" ]; then
+            ls -la build/sermon-verse-detector.exe
+          else
+            ls -la build/sermon-verse-detector
+          fi
+
+      # ── Build Electron app ───────────────────────────────────
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Download Whisper model (small.en — 487 MB)
+        shell: bash
+        run: |
+          mkdir -p models
+          curl -L -o models/ggml-small.en.bin \
+            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
+
+      - name: Install npm dependencies
+        working-directory: app
+        run: npm ci
+
+      - name: Build Electron app
+        working-directory: app
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:${{ matrix.platform }}
+
+      # ── Upload artifacts ─────────────────────────────────────
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ReactiveBible-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            app/release/*.dmg
+            app/release/*.exe
+            app/release/*.AppImage
+            app/release/*.blockmap
+            app/release/latest*.yml
+          if-no-files-found: warn
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            artifacts/*.dmg
+            artifacts/*.exe
+            artifacts/*.AppImage

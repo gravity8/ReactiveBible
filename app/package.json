@@ -1,0 +1,124 @@
+{
+  "name": "reactivebible",
+  "version": "1.0.0",
+  "description": "Real-time sermon verse detection and display",
+  "main": "main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build": "vite build && electron-builder",
+    "build:mac": "vite build && electron-builder --mac",
+    "build:win": "vite build && electron-builder --win",
+    "build:linux": "vite build && electron-builder --linux",
+    "start": "vite build && electron ."
+  },
+  "build": {
+    "appId": "com.reactivebible.app",
+    "productName": "ReactiveBible",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "icon": "build/icon.png",
+    "files": [
+      "main.js",
+      "preload.js",
+      "display.html",
+      "themes.cjs",
+      "bible-fetcher.js",
+      "sync-server.js",
+      "sync-client.js",
+      "dist/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../models",
+        "to": "models"
+      },
+      {
+        "from": "../bibles",
+        "to": "bibles"
+      },
+      {
+        "from": "../config.json",
+        "to": "config.json"
+      }
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "gravity8",
+      "repo": "reactivebible"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.lifestyle",
+      "extraResources": [
+        {
+          "from": "../build/sermon-verse-detector",
+          "to": "bin/sermon-verse-detector"
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "../build/sermon-verse-detector.exe",
+          "to": "bin/sermon-verse-detector.exe"
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "../build/sermon-verse-detector",
+          "to": "bin/sermon-verse-detector"
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "electron-updater": "^6.8.3",
+    "ffmpeg-static": "^5.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "ws": "^8.20.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^9.0.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "vite": "^6.0.0",
+    "wait-on": "^8.0.0"
+  }
+}

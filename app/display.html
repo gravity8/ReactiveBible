@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReactiveBible Display</title>
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #000;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      cursor: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #verse-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 60px;
+      max-width: 85vw;
+      border-radius: 16px;
+
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    #verse-container.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #verse-reference {
+      color: #14b8a6;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    #verse-text {
+      color: #ffffff;
+      font-size: 48px;
+      font-weight: 400;
+      line-height: 1.4;
+      margin-bottom: 16px;
+    }
+
+    #verse-translation {
+      color: #666;
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div id="verse-container">
+    <div id="verse-reference"></div>
+    <div id="verse-text"></div>
+    <div id="verse-translation"></div>
+  </div>
+
+  <script>
+    const container = document.getElementById('verse-container');
+    const refEl = document.getElementById('verse-reference');
+    const textEl = document.getElementById('verse-text');
+    const transEl = document.getElementById('verse-translation');
+
+    // Show a verse with fade-in / slide-up animation
+    function showVerse(verse) {
+      if (!verse) return;
+
+      // Reset animation by hiding first
+      container.classList.remove('visible');
+
+      // Small delay so the transition replays if content changes quickly
+      requestAnimationFrame(() => {
+        refEl.textContent = verse.reference || '';
+        textEl.textContent = verse.text || '';
+        transEl.textContent = verse.active || '';
+
+        requestAnimationFrame(() => {
+          container.classList.add('visible');
+        });
+      });
+    }
+
+    // Hide the verse with fade-out
+    function clearVerse() {
+      container.classList.remove('visible');
+    }
+
+    // Set background image (with text overlay backdrop)
+    let hasCustomBg = false;
+    function setBackground(bgDataUrl) {
+      if (bgDataUrl) {
+        hasCustomBg = true;
+        document.body.style.backgroundImage = `url(${bgDataUrl})`;
+        container.style.background = 'rgba(0,0,0,0.55)';
+        container.style.backdropFilter = 'blur(2px)';
+      } else {
+        hasCustomBg = false;
+        document.body.style.backgroundImage = 'none';
+        // Re-apply theme body style when custom bg is removed.
+        if (currentThemeStyles) applyTheme(currentThemeStyles);
+        else document.body.style.background = '#000';
+        container.style.backdropFilter = 'none';
+      }
+    }
+
+    // Apply a built-in theme.
+    let currentThemeStyles = null;
+    function applyTheme(styles) {
+      currentThemeStyles = styles;
+      // Only apply body background if no custom bg image.
+      if (!hasCustomBg) {
+        document.body.style.cssText = styles.body || '';
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+      }
+      container.style.cssText = (styles.container || '') +
+        'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
+        'text-align:center;padding:40px 60px;max-width:85vw;' +
+        'opacity:' + (container.classList.contains('visible') ? '1' : '0') + ';' +
+        'transform:translateY(' + (container.classList.contains('visible') ? '0' : '20px') + ');' +
+        'transition:opacity 0.5s ease, transform 0.5s ease;';
+      if (hasCustomBg) {
+        container.style.background = 'rgba(0,0,0,0.55)';
+        container.style.backdropFilter = 'blur(2px)';
+      }
+      refEl.style.cssText = (styles.reference || '') +
+        'font-size:32px;font-weight:700;margin-bottom:20px;letter-spacing:0.5px;';
+      textEl.style.cssText = (styles.text || '') +
+        'font-size:48px;line-height:1.4;margin-bottom:16px;';
+      transEl.style.cssText = (styles.translation || '') +
+        'font-size:18px;font-weight:500;letter-spacing:1px;text-transform:uppercase;';
+    }
+
+    // Listen for IPC messages from Electron preload bridge
+    if (window.api) {
+      if (window.api.onShowVerse) {
+        window.api.onShowVerse(showVerse);
+      }
+      if (window.api.onClearVerse) {
+        window.api.onClearVerse(clearVerse);
+      }
+      if (window.api.onSetBackground) {
+        window.api.onSetBackground(setBackground);
+      }
+      if (window.api.onSetTheme) {
+        window.api.onSetTheme(applyTheme);
+      }
+    }
+
+    // Escape key closes the display window
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (window.api && window.api.closeDisplay) {
+          window.api.closeDisplay();
+        } else {
+          window.close();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

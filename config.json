@@ -1,0 +1,35 @@
+{
+  "mode": "offline",
+  "default_translation": "KJV",
+  "l1_translations": [
+    "KJV",
+    "NIV",
+    "NLT",
+    "AMP",
+    "NKJV"
+  ],
+  "api_bible_accounts": [
+    {
+      "env_key": "API_BIBLE_KEY_1",
+      "translations": [
+        "KJV",
+        "NLT",
+        "AMP"
+      ]
+    },
+    {
+      "env_key": "API_BIBLE_KEY_2",
+      "translations": [
+        "NIV",
+        "NKJV",
+        "MSG"
+      ]
+    }
+  ],
+  "disk_cache_path": "./bible_cache/",
+  "kjv_path": "./bibles/kjv.json",
+  "whisper_model_path": "./models/ggml-small.en.bin",
+  "dedup_window_seconds": 8,
+  "sliding_window_size": 10,
+  "debounce_ms": 100
+}
