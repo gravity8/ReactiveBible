@@ -42,15 +42,20 @@ jobs:
 
       - name: Install deps (Windows)
         if: matrix.platform == 'win'
-        run: choco install curl --yes
-
-      # macOS has curl and cmake preinstalled on GitHub runners.
+        run: |
+          vcpkg install curl:x64-windows
+          echo "CMAKE_TOOLCHAIN_FILE=$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
 
       # ── Build C++ binary ─────────────────────────────────────
 
       - name: Build C++ binary
+        shell: bash
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          if [ "${{ matrix.platform }}" = "win" ]; then
+            cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+          else
+            cmake -B build -DCMAKE_BUILD_TYPE=Release
+          fi
           cmake --build build --config Release
 
       - name: Verify binary exists
@@ -82,9 +87,7 @@ jobs:
 
       - name: Build Electron app
         working-directory: app
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run build:${{ matrix.platform }}
+        run: npx vite build && npx electron-builder --${{ matrix.platform }} --publish never
 
       # ── Upload artifacts ─────────────────────────────────────
 
@@ -114,11 +117,29 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Create GitHub Release
+      # ── Release on PRIVATE repo (for your records) ───────────
+      - name: Create private release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           generate_release_notes: true
+          files: |
+            artifacts/*.dmg
+            artifacts/*.exe
+            artifacts/*.AppImage
+
+      # ── Release on PUBLIC repo (for download page) ───────────
+      - name: Publish to public releases repo
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: gravity8/reactivebible-releases
+          token: ${{ secrets.RELEASES_PAT }}
+          tag_name: ${{ github.ref_name }}
+          name: ReactiveBible ${{ github.ref_name }}
+          body: |
+            ## ReactiveBible ${{ github.ref_name }}
+
+            Download for your platform below.
           files: |
             artifacts/*.dmg
             artifacts/*.exe
