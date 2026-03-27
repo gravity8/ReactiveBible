@@ -85,6 +85,15 @@ jobs:
         working-directory: app
         run: npm ci
 
+      - name: Create .env file
+        shell: bash
+        run: |
+          cat > .env <<EOF
+          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
+          API_BIBLE_KEY_1=${{ secrets.API_BIBLE_KEY_1 }}
+          API_BIBLE_KEY_2=${{ secrets.API_BIBLE_KEY_2 }}
+          EOF
+
       - name: Build Electron app
         working-directory: app
         run: npx vite build && npx electron-builder --${{ matrix.platform }} --publish never
