@@ -10,11 +10,11 @@ typedef void CURL;
 enum class Intent {
     SHOW_VERSE,
     CHANGE_TRANSLATION,
-    IGNORE
+    NONE
 };
 
 struct IntentResult {
-    Intent intent = Intent::IGNORE;
+    Intent intent = Intent::NONE;
     std::string book;
     int chapter = 0;
     int verse = 0;

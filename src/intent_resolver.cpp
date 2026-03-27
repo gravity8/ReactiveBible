@@ -211,7 +211,7 @@ IntentResult IntentResolver::parseResponse(const std::string& jsonResponse) {
         } else if (intentStr == "CHANGE_TRANSLATION") {
             result.intent = Intent::CHANGE_TRANSLATION;
         } else {
-            result.intent = Intent::IGNORE;
+            result.intent = Intent::NONE;
         }
 
         if (parsed.contains("book") && !parsed["book"].is_null()) {

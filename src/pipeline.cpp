@@ -157,7 +157,7 @@ void Pipeline::processWindow(const std::string& text) {
 
     IntentResult result = localResolver_.resolve(text, contextJson);
 
-    if (result.intent != Intent::IGNORE && result.confidence >= 0.75f) {
+    if (result.intent != Intent::NONE && result.confidence >= 0.75f) {
         // High-confidence local match — use it directly.
         std::cerr << "[local] ";
     } else if (!offline_mode_) {
@@ -169,14 +169,14 @@ void Pipeline::processWindow(const std::string& text) {
 
         // If Groq failed (confidence 0 = API error / empty response),
         // fall back to the local result rather than discarding it.
-        if (result.intent == Intent::IGNORE && result.confidence == 0.0f &&
-            localBackup.intent != Intent::IGNORE && localBackup.confidence >= 0.6f) {
+        if (result.intent == Intent::NONE && result.confidence == 0.0f &&
+            localBackup.intent != Intent::NONE && localBackup.confidence >= 0.6f) {
             result = localBackup;
             std::cerr << "[local-fallback] ";
         } else {
             std::cerr << "[online] ";
         }
-    } else if (result.intent != Intent::IGNORE && result.confidence >= 0.6f) {
+    } else if (result.intent != Intent::NONE && result.confidence >= 0.6f) {
         // Offline + medium confidence — use it but log warning.
         std::cerr << "[offline-low] ";
     } else {
@@ -186,7 +186,7 @@ void Pipeline::processWindow(const std::string& text) {
 
     std::cerr << "[pipeline] Intent: "
               << (result.intent == Intent::SHOW_VERSE ? "SHOW_VERSE" :
-                  result.intent == Intent::CHANGE_TRANSLATION ? "CHANGE_TRANSLATION" : "IGNORE")
+                  result.intent == Intent::CHANGE_TRANSLATION ? "CHANGE_TRANSLATION" : "NONE")
               << " (confidence: " << result.confidence << ")\n";
 
     switch (result.intent) {
@@ -236,7 +236,7 @@ void Pipeline::processWindow(const std::string& text) {
             }
             break;
         }
-        case Intent::IGNORE:
+        case Intent::NONE:
             break;
     }
 }

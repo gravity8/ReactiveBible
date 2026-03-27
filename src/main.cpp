@@ -1,3 +1,8 @@
+// Prevent Windows min/max macros from breaking std::min/std::max.
+#ifdef _WIN32
+#define NOMINMAX
+#endif
+
 #include "cache.h"
 #include "session_state.h"
 #include "intent_resolver.h"
@@ -12,6 +17,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <unordered_map>
