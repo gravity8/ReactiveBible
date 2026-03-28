@@ -189,6 +189,7 @@ jobs:
         with:
           sparse-checkout: RELEASE_NOTES.md
           sparse-checkout-cone-mode: false
+          clean: false
 
       - name: Publish to public releases repo
         uses: softprops/action-gh-release@v2
