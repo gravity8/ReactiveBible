@@ -4,8 +4,25 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
-// Load .env from project root.
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+// Load .env — check multiple locations in order of priority.
+// Avoid app.getPath() here — it can throw before app is ready on some platforms.
+try {
+  const envPaths = [
+    path.join(__dirname, '..', '.env'),                        // dev (project root)
+    path.join(process.resourcesPath || __dirname, '.env'),     // packaged resources
+  ];
+  for (const envPath of envPaths) {
+    try {
+      if (fs.existsSync(envPath)) {
+        require('dotenv').config({ path: envPath });
+        console.log(`[app] Loaded .env from ${envPath}`);
+        break;
+      }
+    } catch {}
+  }
+} catch (e) {
+  console.error('[app] Failed to load .env:', e.message);
+}
 const http = require('http');
 const SyncServer = require('./sync-server');
 const SyncClient = require('./sync-client');
@@ -87,18 +104,22 @@ function loadTranslation(code) {
 }
 
 function createMainWindow() {
+  const iconPath = path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 900,
     minWidth: 1200,
     minHeight: 700,
     backgroundColor: '#0d0d0d',
+    icon: iconPath,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 15, y: 15 },
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      devTools: isDev,
     },
   });
 
@@ -971,19 +992,47 @@ function setupAutoUpdater() {
 
   try {
     const { autoUpdater } = require('electron-updater');
+
+    // Point to the PUBLIC releases repo (source repo is private).
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: 'gravity8',
+      repo: 'reactivebible-releases',
+    });
+
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
 
     autoUpdater.on('update-available', (info) => {
       console.log('[updater] Update available:', info.version);
-      if (mainWindow) mainWindow.webContents.send('log', `[updater] Downloading v${info.version}...`);
+      if (mainWindow) mainWindow.webContents.send('log', `Update found: v${info.version}. Downloading...`);
+    });
+
+    autoUpdater.on('update-not-available', () => {
+      console.log('[updater] App is up to date.');
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+      const pct = Math.round(progress.percent);
+      if (mainWindow) mainWindow.webContents.send('log', `Downloading update: ${pct}%`);
     });
 
     autoUpdater.on('update-downloaded', (info) => {
       console.log('[updater] Update downloaded:', info.version);
       if (mainWindow) {
-        mainWindow.webContents.send('log', `[updater] v${info.version} ready — will install on next restart`);
+        mainWindow.webContents.send('log', `v${info.version} ready — restart to install.`);
       }
+      // Prompt user via dialog.
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'Update Ready',
+        message: `ReactiveBible v${info.version} has been downloaded.`,
+        detail: 'Restart now to install the update.',
+        buttons: ['Restart Now', 'Later'],
+        defaultId: 0,
+      }).then(({ response }) => {
+        if (response === 0) autoUpdater.quitAndInstall();
+      });
     });
 
     autoUpdater.on('error', (err) => {

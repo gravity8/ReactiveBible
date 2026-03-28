@@ -9,7 +9,10 @@ let hostLostTimer = null; // Track promote timer to prevent duplicates.
 
 function setupIpcListeners() {
   const api = window.api;
-  if (!api) return;
+  if (!api) {
+    console.error('[app] window.api is undefined — preload script did not load. Check Electron main process logs.');
+    return;
+  }
 
   // Clean up any previously registered listeners (prevents HMR accumulation).
   api.removeAllListeners?.();

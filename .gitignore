@@ -1,8 +1,11 @@
 # Secrets
 .env
 
-# Build artifacts
+# Build artifacts (C++ output)
 build/
+# Keep Electron icon files
+!app/build/
+!app/build/icon.*
 app/dist/
 app/release/
 app/node_modules/

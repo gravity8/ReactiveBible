@@ -1,6 +1,6 @@
 {
   "name": "reactivebible",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Real-time sermon verse detection and display",
   "main": "main.js",
   "scripts": {
@@ -18,7 +18,7 @@
       "output": "release",
       "buildResources": "build"
     },
-    "icon": "build/icon.png",
+    "icon": "build/icon",
     "files": [
       "main.js",
       "preload.js",
@@ -27,6 +27,7 @@
       "bible-fetcher.js",
       "sync-server.js",
       "sync-client.js",
+      "build/icon.*",
       "dist/**/*"
     ],
     "asarUnpack": [
@@ -44,6 +45,10 @@
       {
         "from": "../config.json",
         "to": "config.json"
+      },
+      {
+        "from": "../.env",
+        "to": ".env"
       }
     ],
     "publish": {

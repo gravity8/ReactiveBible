@@ -1,5 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+console.log('[preload] Loading preload.js...');
+
 // Track registered listeners so they can be cleaned up on HMR.
 const listeners = [];
 
@@ -9,6 +11,7 @@ function onChannel(channel, callback) {
   listeners.push({ channel, wrapped });
 }
 
+try {
 contextBridge.exposeInMainWorld('api', {
   // Transcription control
   startTranscription: (sampleRate) => ipcRenderer.invoke('start-transcription', sampleRate),
@@ -82,3 +85,7 @@ contextBridge.exposeInMainWorld('api', {
     listeners.length = 0;
   },
 });
+console.log('[preload] window.api exposed successfully');
+} catch (err) {
+  console.error('[preload] FATAL: Failed to expose API:', err);
+}
