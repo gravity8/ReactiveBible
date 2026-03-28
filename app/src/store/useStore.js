@@ -57,20 +57,16 @@ const useStore = create((set, get) => ({
   },
 
   sendToLive: () => {
-    const { previewVerse, isLiveEnabled } = get();
+    const { previewVerse } = get();
     if (!previewVerse) return;
     set({ liveVerse: { ...previewVerse } });
-    if (isLiveEnabled) {
-      window.api?.sendToDisplay(previewVerse);
-    }
+    window.api?.sendToDisplay(previewVerse);
   },
 
   // Drop directly to live (bypasses preview-first flow).
   sendDirectToLive: (verse) => {
     set({ previewVerse: verse, liveVerse: { ...verse } });
-    if (get().isLiveEnabled) {
-      window.api?.sendToDisplay(verse);
-    }
+    window.api?.sendToDisplay(verse);
   },
 
   clearLive: () => {
@@ -80,10 +76,13 @@ const useStore = create((set, get) => ({
 
   toggleLive: (val) => {
     set({ isLiveEnabled: val });
-    const { liveVerse } = get();
-    if (val && liveVerse) {
-      window.api?.sendToDisplay(liveVerse);
-    } else if (!val) {
+    if (val) {
+      // Re-send current live verse when toggling on.
+      const { liveVerse } = get();
+      if (liveVerse) window.api?.sendToDisplay(liveVerse);
+    } else {
+      // Clear the display and reset live verse.
+      set({ liveVerse: null });
       window.api?.clearDisplay();
     }
   },
@@ -138,6 +137,10 @@ const useStore = create((set, get) => ({
   setDisplayTheme: (themeId) => {
     set({ displayTheme: themeId });
     window.api?.sendDisplayTheme(themeId);
+  },
+  clearDisplayTheme: () => {
+    set({ displayTheme: 'midnight' });
+    window.api?.sendDisplayTheme('midnight');
   },
 
   // ── Mode (online = Groq LLM, offline = local regex only) ──

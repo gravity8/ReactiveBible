@@ -56,7 +56,7 @@ let powerSaveId = null;
 let networkDisplayServer = null;
 let networkDisplayWss = null;
 let networkDisplayClients = new Set();
-const NETWORK_DISPLAY_PORT = 3001;
+let networkDisplayPort = null;
 
 // ── Collaboration state ──
 let syncServer = null;
@@ -124,7 +124,8 @@ function createMainWindow() {
   });
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+    const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
+    mainWindow.loadURL(devUrl);
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   } else {
     mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
@@ -159,7 +160,8 @@ function createDisplayWindow(externalDisplay) {
   });
 
   if (isDev) {
-    displayWindow.loadURL('http://localhost:5173/display.html');
+    const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
+    displayWindow.loadURL(`${devUrl}/display.html`);
   } else {
     displayWindow.loadFile(path.join(__dirname, 'display.html'));
   }
@@ -615,12 +617,11 @@ status=document.getElementById('status');
 let ws,retry=1000,hasBg=false,curTheme=null;
 function applyTheme(s){
   curTheme=s;
-  if(!hasBg){document.body.style.cssText=s.body+'width:100vw;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;font-family:-apple-system,BlinkMacSystemFont,\\'Segoe UI\\',system-ui,sans-serif;'}
+  if(!hasBg){document.body.style.cssText=(s.body||'')+';width:100vw;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;'}
   ref.style.cssText=(s.reference||'')+'font-size:clamp(18px,3vw,32px);font-weight:700;margin-bottom:20px;';
   txt.style.cssText=(s.text||'')+'font-size:clamp(24px,4.5vw,48px);line-height:1.5;';
   tr.style.cssText=(s.translation||'')+'font-size:clamp(12px,1.5vw,18px);margin-top:16px;text-transform:uppercase;letter-spacing:1px;';
-  var isVis=v.classList.contains('show');
-  v.style.cssText=(s.container||'')+'text-align:center;max-width:85vw;padding:40px 60px;opacity:'+(isVis?1:0)+';transform:translateY('+(isVis?'0':'20px')+');transition:all .6s cubic-bezier(.16,1,.3,1);';
+  v.setAttribute('style',s.container||'');
   if(hasBg){v.style.background='rgba(0,0,0,0.55)';v.style.backdropFilter='blur(2px)'}
 }
 function connect(){
@@ -653,56 +654,67 @@ connect();
 function startNetworkDisplay() {
   if (networkDisplayServer) return;
 
-  networkDisplayServer = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(getNetworkDisplayHtml());
-  });
-
-  networkDisplayWss = new WebSocketServer({ server: networkDisplayServer });
-
-  networkDisplayWss.on('connection', (ws) => {
-    // Reject if too many clients connected.
-    if (networkDisplayClients.size >= 50) {
-      ws.close(1013, 'Too many clients');
-      return;
-    }
-
-    ws.isAlive = true;
-    networkDisplayClients.add(ws);
-    console.log(`[network-display] Client connected (${networkDisplayClients.size} total)`);
-
-    // Send current state.
-    const theme = THEMES.find((t) => t.id === currentDisplayTheme);
-    if (theme) {
-      ws.send(JSON.stringify({ type: 'theme', styles: theme.styles }));
-    }
-    if (currentDisplayBg) {
-      ws.send(JSON.stringify({ type: 'background', bg: currentDisplayBg }));
-    }
-
-    ws.on('pong', () => { ws.isAlive = true; });
-    ws.on('close', () => {
-      networkDisplayClients.delete(ws);
-      console.log(`[network-display] Client disconnected (${networkDisplayClients.size} total)`);
+  return new Promise((resolve) => {
+    networkDisplayServer = http.createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(getNetworkDisplayHtml());
     });
-    ws.on('error', () => networkDisplayClients.delete(ws));
-  });
 
-  // Ping clients every 30s to detect zombie connections.
-  networkDisplayWss._pingInterval = setInterval(() => {
-    for (const ws of networkDisplayClients) {
-      if (!ws.isAlive) {
-        networkDisplayClients.delete(ws);
-        ws.terminate();
-        continue;
+    networkDisplayWss = new WebSocketServer({ server: networkDisplayServer });
+
+    networkDisplayWss.on('connection', (ws) => {
+      if (networkDisplayClients.size >= 50) {
+        ws.close(1013, 'Too many clients');
+        return;
       }
-      ws.isAlive = false;
-      try { ws.ping(); } catch { networkDisplayClients.delete(ws); }
-    }
-  }, 30000);
 
-  networkDisplayServer.listen(NETWORK_DISPLAY_PORT, '0.0.0.0', () => {
-    console.log(`[network-display] Server running on port ${NETWORK_DISPLAY_PORT}`);
+      ws.isAlive = true;
+      networkDisplayClients.add(ws);
+
+      // Send current state.
+      const theme = THEMES.find((t) => t.id === currentDisplayTheme);
+      if (theme) {
+        ws.send(JSON.stringify({ type: 'theme', styles: theme.styles }));
+      }
+      if (currentDisplayBg) {
+        ws.send(JSON.stringify({ type: 'background', bg: currentDisplayBg }));
+      }
+
+      ws.on('pong', () => { ws.isAlive = true; });
+      ws.on('close', () => networkDisplayClients.delete(ws));
+      ws.on('error', () => networkDisplayClients.delete(ws));
+    });
+
+    // Ping clients every 30s to detect zombie connections.
+    networkDisplayWss._pingInterval = setInterval(() => {
+      for (const ws of networkDisplayClients) {
+        if (!ws.isAlive) { networkDisplayClients.delete(ws); ws.terminate(); continue; }
+        ws.isAlive = false;
+        try { ws.ping(); } catch { networkDisplayClients.delete(ws); }
+      }
+    }, 30000);
+
+    // Try ports 3001-3010 until one works.
+    let port = 3001;
+    function tryListen() {
+      networkDisplayServer.listen(port, '0.0.0.0', () => {
+        networkDisplayPort = port;
+        console.log(`[network-display] Server running on port ${port}`);
+        resolve(port);
+      });
+      networkDisplayServer.once('error', (err) => {
+        if (err.code === 'EADDRINUSE' && port < 3010) {
+          port++;
+          tryListen();
+        } else {
+          console.error('[network-display] Failed to start:', err.message);
+          networkDisplayServer = null;
+          networkDisplayWss = null;
+          resolve(null);
+        }
+      });
+    }
+    tryListen();
   });
 }
 
@@ -723,6 +735,7 @@ function stopNetworkDisplay() {
     networkDisplayServer.close();
     networkDisplayServer = null;
   }
+  networkDisplayPort = null;
 }
 
 function broadcastToNetworkDisplays(message) {
@@ -745,9 +758,10 @@ function getLocalIP() {
 }
 
 // IPC: Start/stop network display.
-ipcMain.handle('start-network-display', () => {
-  startNetworkDisplay();
-  return { url: `http://${getLocalIP()}:${NETWORK_DISPLAY_PORT}`, port: NETWORK_DISPLAY_PORT, clients: networkDisplayClients.size };
+ipcMain.handle('start-network-display', async () => {
+  const port = await startNetworkDisplay();
+  if (!port) return { error: 'Failed to start network display' };
+  return { url: `http://${getLocalIP()}:${port}`, port, clients: networkDisplayClients.size };
 });
 
 ipcMain.handle('stop-network-display', () => {
@@ -758,7 +772,7 @@ ipcMain.handle('stop-network-display', () => {
 ipcMain.handle('get-network-display-info', () => {
   return {
     running: !!networkDisplayServer,
-    url: networkDisplayServer ? `http://${getLocalIP()}:${NETWORK_DISPLAY_PORT}` : null,
+    url: networkDisplayServer ? `http://${getLocalIP()}:${networkDisplayPort}` : null,
     clients: networkDisplayClients.size,
   };
 });

@@ -13,6 +13,7 @@ export default function LiveDisplayPanel() {
   const clearDisplayBg = useStore((s) => s.clearDisplayBg);
   const displayTheme = useStore((s) => s.displayTheme);
   const setDisplayTheme = useStore((s) => s.setDisplayTheme);
+  const clearDisplayTheme = useStore((s) => s.clearDisplayTheme);
   const [dragOver, setDragOver] = useState(false);
   const [themePicker, setThemePicker] = useState(false);
 
@@ -62,8 +63,8 @@ export default function LiveDisplayPanel() {
           {/* Theme picker button */}
           <div style={{ position: 'relative' }}>
             <button
-              onClick={() => setThemePicker(!themePicker)}
-              title="Choose display theme"
+              onClick={displayTheme !== 'midnight' ? clearDisplayTheme : () => setThemePicker(!themePicker)}
+              title={displayTheme !== 'midnight' ? 'Reset theme' : 'Choose display theme'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -75,8 +76,8 @@ export default function LiveDisplayPanel() {
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.15s',
-                background: themePicker ? 'rgba(20,184,166,0.15)' : 'rgba(255,255,255,0.05)',
-                color: themePicker ? '#14b8a6' : '#666',
+                background: displayTheme !== 'midnight' ? 'rgba(20,184,166,0.15)' : themePicker ? 'rgba(20,184,166,0.15)' : 'rgba(255,255,255,0.05)',
+                color: displayTheme !== 'midnight' ? '#14b8a6' : themePicker ? '#14b8a6' : '#666',
               }}
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -86,7 +87,7 @@ export default function LiveDisplayPanel() {
                 <line x1="3.95" y1="6.06" x2="8.54" y2="14" />
                 <line x1="10.88" y1="21.94" x2="15.46" y2="14" />
               </svg>
-              Theme
+              {displayTheme !== 'midnight' ? 'Clear Theme' : 'Theme'}
             </button>
             {themePicker && (
               <div style={{

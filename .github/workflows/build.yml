@@ -185,6 +185,11 @@ jobs:
             artifacts/*.blockmap
 
       # ── Release on PUBLIC repo (for download page + auto-update) ──
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: RELEASE_NOTES.md
+          sparse-checkout-cone-mode: false
+
       - name: Publish to public releases repo
         uses: softprops/action-gh-release@v2
         with:
@@ -192,10 +197,7 @@ jobs:
           token: ${{ secrets.RELEASES_PAT }}
           tag_name: ${{ github.ref_name }}
           name: ReactiveBible ${{ github.ref_name }}
-          body: |
-            ## ReactiveBible ${{ github.ref_name }}
-
-            Download for your platform below.
+          body_path: RELEASE_NOTES.md
           files: |
             artifacts/*.dmg
             artifacts/*.exe

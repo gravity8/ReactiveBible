@@ -128,21 +128,21 @@
     }
 
     // Apply a built-in theme.
+    // IMPORTANT: Never overwrite opacity/transform on container — those are
+    // controlled by the .visible CSS class for show/hide animations.
     let currentThemeStyles = null;
     function applyTheme(styles) {
       currentThemeStyles = styles;
       // Only apply body background if no custom bg image.
       if (!hasCustomBg) {
-        document.body.style.cssText = styles.body || '';
-        document.body.style.backgroundSize = 'cover';
-        document.body.style.backgroundPosition = 'center';
+        document.body.style.cssText = (styles.body || '') +
+          ';width:100vw;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center;' +
+          'background-size:cover;background-position:center;cursor:none;' +
+          'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
       }
-      container.style.cssText = (styles.container || '') +
-        'display:flex;flex-direction:column;align-items:center;justify-content:center;' +
-        'text-align:center;padding:40px 60px;max-width:85vw;' +
-        'opacity:' + (container.classList.contains('visible') ? '1' : '0') + ';' +
-        'transform:translateY(' + (container.classList.contains('visible') ? '0' : '20px') + ');' +
-        'transition:opacity 0.5s ease, transform 0.5s ease;';
+      // Apply container theme styles WITHOUT touching opacity/transform.
+      const themeContainer = styles.container || '';
+      container.setAttribute('style', themeContainer);
       if (hasCustomBg) {
         container.style.background = 'rgba(0,0,0,0.55)';
         container.style.backdropFilter = 'blur(2px)';
@@ -155,21 +155,20 @@
         'font-size:18px;font-weight:500;letter-spacing:1px;text-transform:uppercase;';
     }
 
-    // Listen for IPC messages from Electron preload bridge
-    if (window.api) {
-      if (window.api.onShowVerse) {
-        window.api.onShowVerse(showVerse);
+    // Listen for IPC messages from Electron preload bridge.
+    // Retry until window.api is available (preload may load after script).
+    function registerListeners() {
+      if (!window.api) {
+        setTimeout(registerListeners, 50);
+        return;
       }
-      if (window.api.onClearVerse) {
-        window.api.onClearVerse(clearVerse);
-      }
-      if (window.api.onSetBackground) {
-        window.api.onSetBackground(setBackground);
-      }
-      if (window.api.onSetTheme) {
-        window.api.onSetTheme(applyTheme);
-      }
+      console.log('[display] Registering IPC listeners');
+      window.api.onShowVerse?.(showVerse);
+      window.api.onClearVerse?.(clearVerse);
+      window.api.onSetBackground?.(setBackground);
+      window.api.onSetTheme?.(applyTheme);
     }
+    registerListeners();
 
     // Escape key closes the display window
     document.addEventListener('keydown', (e) => {

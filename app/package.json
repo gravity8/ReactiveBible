@@ -1,10 +1,10 @@
 {
   "name": "reactivebible",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Real-time sermon verse detection and display",
   "main": "main.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev": "node dev-server.js",
     "build": "vite build && electron-builder",
     "build:mac": "vite build && electron-builder --mac",
     "build:win": "vite build && electron-builder --win",
