@@ -13,6 +13,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR})
 # ── Options ──────────────────────────────────────────────────
 option(BUILD_WHISPER "Build whisper.cpp from submodule" ON)
 
+# Build whisper as static libraries so the binary is self-contained.
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(GGML_STATIC ON CACHE BOOL "" FORCE)
+set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(WHISPER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
 # ── whisper.cpp ──────────────────────────────────────────────
 if(BUILD_WHISPER)
     if(NOT EXISTS "${CMAKE_SOURCE_DIR}/third_party/whisper.cpp/CMakeLists.txt")
@@ -41,6 +47,7 @@ if(NOT EXISTS "${CMAKE_SOURCE_DIR}/third_party/nlohmann/json.hpp")
 endif()
 
 # ── Find system libraries ───────────────────────────────────
+set(CURL_USE_STATIC_LIBS ON)
 find_package(CURL REQUIRED)
 
 # ── Sources ──────────────────────────────────────────────────
