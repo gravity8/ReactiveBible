@@ -6,6 +6,7 @@ build/
 # Keep Electron icon files
 !app/build/
 !app/build/icon.*
+!app/build/entitlements.mac.plist
 app/dist/
 app/release/
 app/node_modules/

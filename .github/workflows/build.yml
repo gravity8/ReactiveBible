@@ -84,16 +84,14 @@ jobs:
 
       - name: Create .env file
         shell: bash
+        env:
+          GROQ_KEY: ${{ secrets.GROQ_API_KEY }}
+          BIBLE_KEY_1: ${{ secrets.API_BIBLE_KEY_1 }}
+          BIBLE_KEY_2: ${{ secrets.API_BIBLE_KEY_2 }}
         run: |
-          cat > .env <<'ENVEOF'
-          GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-          API_BIBLE_KEY_1=${{ secrets.API_BIBLE_KEY_1 }}
-          API_BIBLE_KEY_2=${{ secrets.API_BIBLE_KEY_2 }}
-          ENVEOF
-          # Strip leading whitespace from YAML indentation.
-          sed -i.bak 's/^[[:space:]]*//' .env && rm -f .env.bak
-          echo "--- .env contents ---"
-          cat .env
+          printf "GROQ_API_KEY=%s\nAPI_BIBLE_KEY_1=%s\nAPI_BIBLE_KEY_2=%s\n" \
+            "$GROQ_KEY" "$BIBLE_KEY_1" "$BIBLE_KEY_2" > .env
+          echo ".env created ($(wc -l < .env) lines)"
 
       - name: Build Electron app
         working-directory: app
@@ -105,36 +103,45 @@ jobs:
       - name: Re-sign macOS app
         if: matrix.platform == 'mac'
         run: |
-          APP=$(find app/release/mac-arm64 -name "*.app" -maxdepth 1 | head -1)
-          if [ -z "$APP" ]; then
-            APP=$(find app/release/mac -name "*.app" -maxdepth 1 | head -1)
-          fi
+          # Use absolute paths to avoid cd breakage
+          ROOT="$(pwd)"
+          ENTITLEMENTS="$ROOT/app/build/entitlements.mac.plist"
+
+          # Find the .app bundle
+          APP=$(find "$ROOT/app/release" -name "*.app" -maxdepth 2 2>/dev/null | head -1)
           echo "Signing: $APP"
+          [ -z "$APP" ] && { echo "ERROR: No .app found"; exit 1; }
 
-          # Sign all nested binaries first
-          find "$APP" -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.node" \) -exec \
-            codesign --force --sign - --timestamp=none {} \;
+          # 1. Sign all dylibs and shared objects
+          find "$APP" -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.node" \) | while read f; do
+            codesign --force --sign - --timestamp=none "$f" 2>/dev/null
+          done
 
-          # Sign frameworks
-          find "$APP/Contents/Frameworks" -name "*.framework" -exec \
-            codesign --force --deep --sign - --timestamp=none {} \;
+          # 2. Sign embedded binaries (detector + ffmpeg)
+          codesign --force --sign - --timestamp=none --entitlements "$ENTITLEMENTS" \
+            "$APP/Contents/Resources/bin/sermon-verse-detector" 2>/dev/null || true
+          codesign --force --sign - --timestamp=none \
+            "$APP/Contents/Resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg" 2>/dev/null || true
 
-          # Sign helper apps
-          find "$APP/Contents/Frameworks" -name "*.app" -exec \
-            codesign --force --deep --sign - --timestamp=none --entitlements /dev/null {} \;
+          # 3. Sign helper apps (bottom-up)
+          find "$APP/Contents/Frameworks" -name "*.app" -print0 | while IFS= read -r -d '' helper; do
+            codesign --force --sign - --timestamp=none --entitlements "$ENTITLEMENTS" "$helper"
+          done
 
-          # Sign the detector binary and ffmpeg
-          codesign --force --sign - --timestamp=none "$APP/Contents/Resources/bin/sermon-verse-detector" 2>/dev/null || true
-          codesign --force --sign - --timestamp=none "$APP/Contents/Resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg" 2>/dev/null || true
+          # 4. Sign frameworks (bottom-up)
+          find "$APP/Contents/Frameworks" -maxdepth 1 -name "*.framework" -print0 | while IFS= read -r -d '' fw; do
+            codesign --force --sign - --timestamp=none "$fw"
+          done
 
-          # Sign the main app
-          codesign --force --deep --sign - --timestamp=none "$APP"
+          # 5. Sign the main app last
+          codesign --force --sign - --timestamp=none --entitlements "$ENTITLEMENTS" "$APP"
 
-          # Verify
-          codesign --verify --deep --strict "$APP" && echo "Signing verified OK"
+          # 6. Verify
+          codesign --verify --deep --strict "$APP" 2>&1 && echo "Signing verified OK" || { echo "ERROR: Verification failed"; exit 1; }
 
-          # Rebuild the DMG with the re-signed app
-          npx electron-builder --mac dmg --publish never --prepackaged "$APP"
+          # 7. Rebuild DMG with the re-signed app (use absolute path)
+          rm -f "$ROOT/app/release/"*.dmg
+          cd "$ROOT/app" && npx electron-builder --mac dmg --publish never --prepackaged "$APP"
 
       # ── Upload artifacts ─────────────────────────────────────
 
