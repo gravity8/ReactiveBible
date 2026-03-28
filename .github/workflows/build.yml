@@ -189,7 +189,7 @@ jobs:
         with:
           sparse-checkout: RELEASE_NOTES.md
           sparse-checkout-cone-mode: false
-          clean: false
+          path: source
 
       - name: Publish to public releases repo
         uses: softprops/action-gh-release@v2
@@ -198,7 +198,7 @@ jobs:
           token: ${{ secrets.RELEASES_PAT }}
           tag_name: ${{ github.ref_name }}
           name: ReactiveBible ${{ github.ref_name }}
-          body_path: RELEASE_NOTES.md
+          body_path: source/RELEASE_NOTES.md
           files: |
             artifacts/*.dmg
             artifacts/*.exe
