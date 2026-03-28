@@ -99,6 +99,43 @@ jobs:
         working-directory: app
         run: npx vite build && npx electron-builder --${{ matrix.platform }} --publish never
 
+      # ── Fix macOS code signing ──────────────────────────────
+      # electron-builder's ad-hoc signing breaks the seal on Electron Framework.
+      # Re-sign the entire .app with proper ad-hoc signature + hardened runtime.
+      - name: Re-sign macOS app
+        if: matrix.platform == 'mac'
+        run: |
+          APP=$(find app/release/mac-arm64 -name "*.app" -maxdepth 1 | head -1)
+          if [ -z "$APP" ]; then
+            APP=$(find app/release/mac -name "*.app" -maxdepth 1 | head -1)
+          fi
+          echo "Signing: $APP"
+
+          # Sign all nested binaries first
+          find "$APP" -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.node" \) -exec \
+            codesign --force --sign - --timestamp=none {} \;
+
+          # Sign frameworks
+          find "$APP/Contents/Frameworks" -name "*.framework" -exec \
+            codesign --force --deep --sign - --timestamp=none {} \;
+
+          # Sign helper apps
+          find "$APP/Contents/Frameworks" -name "*.app" -exec \
+            codesign --force --deep --sign - --timestamp=none --entitlements /dev/null {} \;
+
+          # Sign the detector binary and ffmpeg
+          codesign --force --sign - --timestamp=none "$APP/Contents/Resources/bin/sermon-verse-detector" 2>/dev/null || true
+          codesign --force --sign - --timestamp=none "$APP/Contents/Resources/app.asar.unpacked/node_modules/ffmpeg-static/ffmpeg" 2>/dev/null || true
+
+          # Sign the main app
+          codesign --force --deep --sign - --timestamp=none "$APP"
+
+          # Verify
+          codesign --verify --deep --strict "$APP" && echo "Signing verified OK"
+
+          # Rebuild the DMG with the re-signed app
+          npx electron-builder --mac dmg --publish never --prepackaged "$APP"
+
       # ── Upload artifacts ─────────────────────────────────────
 
       - name: Upload artifacts

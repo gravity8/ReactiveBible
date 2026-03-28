@@ -1,6 +1,6 @@
 {
   "name": "reactivebible",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Real-time sermon verse detection and display",
   "main": "main.js",
   "scripts": {
@@ -66,6 +66,9 @@
         }
       ],
       "category": "public.app-category.lifestyle",
+      "identity": null,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
       "extraResources": [
         {
           "from": "../build/sermon-verse-detector",
