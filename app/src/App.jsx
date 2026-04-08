@@ -8,6 +8,7 @@ import QueuePanel from './components/QueuePanel';
 import SearchScripture from './components/SearchScripture';
 import RecentDetections from './components/RecentDetections';
 import SettingsModal from './components/SettingsModal';
+import PastorProfileModal from './components/PastorProfileModal';
 import Toast from './components/Toast';
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
       </div>
 
       <SettingsModal />
+      <PastorProfileModal />
       <Toast />
     </div>
   );

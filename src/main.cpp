@@ -6,6 +6,8 @@
 #include "cache.h"
 #include "session_state.h"
 #include "intent_resolver.h"
+#include "pastor_profile.h"
+#include "book_normalizer.h"
 #include "api_fetch.h"
 #include "dedup.h"
 #include "output.h"
@@ -148,6 +150,28 @@ int main(int argc, char* argv[]) {
     std::cerr << "[main] Default translation: " << cfg.default_translation << "\n";
     std::cerr << "[main] L1 translations: " << cfg.l1_translations.size() << "\n";
 
+    // ── Step 1b: Load pastor profile (if set via environment) ──
+    PastorProfile profile;
+    if (const char* pp = std::getenv("PASTOR_PROFILE_PATH")) {
+        if (pp[0] != '\0') {
+            profile = loadPastorProfile(pp);
+        }
+    }
+
+    // Override default translation from profile.
+    if (profile.loaded && !profile.preferredTranslation.empty()) {
+        cfg.default_translation = profile.preferredTranslation;
+        std::cerr << "[main] Profile override: default translation → "
+                  << cfg.default_translation << "\n";
+    }
+
+    // Inject pronunciation aliases from profile.
+    if (profile.loaded && !profile.pronunciationMap.empty()) {
+        BookNormalizer::addAliases(profile.pronunciationMap);
+        std::cerr << "[main] Added " << profile.pronunciationMap.size()
+                  << " pronunciation aliases from profile\n";
+    }
+
     // ── Step 2: Load L1 translations into cache ─────────────
     Cache cache;
 
@@ -179,6 +203,10 @@ int main(int argc, char* argv[]) {
     std::cerr << "[main] Mode: " << (offlineMode ? "OFFLINE (local regex)" : "ONLINE (Groq LLM)") << "\n";
 
     IntentResolver resolver(cfg.groq_api_key);
+    if (profile.loaded && !profile.llmPromptExtension.empty()) {
+        resolver.setProfileExtension(profile.llmPromptExtension);
+        std::cerr << "[main] Injected pastor profile into LLM system prompt\n";
+    }
     ApiFetch fetcher;
     DedupGate dedup(cfg.dedup_window_seconds);
     Output output;
@@ -226,7 +254,15 @@ int main(int argc, char* argv[]) {
         "Genesis 15:1, Habakkuk 2:1, Nehemiah 8:10, "
         "open your Bible to Isaiah 53:1, next verse, "
         "Amplified Classic, New Living Translation.";
-    wparams.initial_prompt = biblePrompt;
+
+    // Extend Whisper prompt with pastor profile vocabulary.
+    static std::string fullPrompt;
+    fullPrompt = biblePrompt;
+    if (profile.loaded && !profile.whisperPromptExtension.empty()) {
+        fullPrompt += " " + profile.whisperPromptExtension;
+        std::cerr << "[main] Extended Whisper prompt with profile vocabulary\n";
+    }
+    wparams.initial_prompt = fullPrompt.c_str();
 
     // ── Streaming audio parameters ─────────────────────────
     // Continuously buffers audio. Runs Whisper every step_ms with overlap

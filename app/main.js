@@ -27,6 +27,8 @@ const http = require('http');
 const SyncServer = require('./sync-server');
 const SyncClient = require('./sync-client');
 const bibleFetcher = require('./bible-fetcher');
+const profileManager = require('./profile-manager');
+const calibrationWorker = require('./calibration-worker');
 const { WebSocketServer } = require('ws');
 
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -247,6 +249,7 @@ function startDetector(sampleRate) {
     env: {
       ...process.env,
       BIBLE_CACHE_DIR: path.join(getUserDataDir(), 'bible_cache'),
+      PASTOR_PROFILE_PATH: profileManager.getActiveProfilePath(),
     },
   });
 
@@ -465,6 +468,71 @@ ipcMain.handle('set-mode', (event, mode) => {
     }, 200);
   }
 
+  return { success: true };
+});
+
+// ── Pastor Profile IPC ─────────────────────────────────
+
+ipcMain.handle('get-profiles', () => {
+  return profileManager.listProfiles();
+});
+
+ipcMain.handle('get-active-profile', () => {
+  const id = profileManager.getActiveProfileId();
+  if (!id) return null;
+  return profileManager.getProfile(id);
+});
+
+ipcMain.handle('set-active-profile', (event, id) => {
+  profileManager.setActiveProfileId(id);
+  // Restart detector if running so it picks up the new profile.
+  if (detectorProcess) {
+    stopDetector();
+    setTimeout(() => {
+      startDetector(48000);
+      const name = id ? (profileManager.getProfile(id)?.name || id) : 'none';
+      if (mainWindow) mainWindow.webContents.send('log', `[app] Switched to profile: ${name} — detector restarted`);
+    }, 200);
+  }
+  return { success: true };
+});
+
+ipcMain.handle('delete-profile', (event, id) => {
+  const deleted = profileManager.deleteProfile(id);
+  // If the deleted profile was active and detector is running, restart without a profile.
+  if (deleted && !profileManager.getActiveProfileId() && detectorProcess) {
+    stopDetector();
+    setTimeout(() => {
+      startDetector(48000);
+      if (mainWindow) mainWindow.webContents.send('log', '[app] Profile deleted — detector restarted without profile');
+    }, 200);
+  }
+  return { success: deleted };
+});
+
+ipcMain.handle('start-calibration', async (event, { name, urls }) => {
+  try {
+    const result = await calibrationWorker.runCalibration({
+      name,
+      urls,
+      appPath: __dirname,
+      resourcesPath: process.resourcesPath || path.join(__dirname, '..'),
+      biblesDir: resolvePath('bibles'),
+      onProgress: (data) => {
+        if (mainWindow) mainWindow.webContents.send('calibration-progress', data);
+      },
+    });
+    if (mainWindow) mainWindow.webContents.send('calibration-complete', { profileId: result.profileId });
+    return { success: true, profileId: result.profileId };
+  } catch (err) {
+    const message = err.message || 'Calibration failed';
+    if (mainWindow) mainWindow.webContents.send('calibration-error', { message });
+    return { success: false, error: message };
+  }
+});
+
+ipcMain.handle('cancel-calibration', () => {
+  calibrationWorker.cancel();
   return { success: true };
 });
 
@@ -1062,6 +1130,7 @@ function setupAutoUpdater() {
 // ── App lifecycle ────────────────────────────────────
 
 app.whenReady().then(() => {
+  profileManager.init(getUserDataDir());
   createMainWindow();
   setupAutoUpdater();
 });

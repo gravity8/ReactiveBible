@@ -154,6 +154,39 @@ const useStore = create((set, get) => ({
     }
   },
 
+  // ── Pastor Profiles ──
+  profiles: [],
+  activeProfileId: null,
+  calibrationState: null, // { phase, current, total, message }
+  profileModalOpen: false,
+
+  setProfiles: (list) => set({ profiles: list }),
+  setActiveProfileId: (id) => set({ activeProfileId: id }),
+  setCalibrationState: (state) => set({ calibrationState: state }),
+  toggleProfileModal: () => set((s) => ({ profileModalOpen: !s.profileModalOpen })),
+  closeProfileModal: () => set({ profileModalOpen: false }),
+
+  loadProfiles: async () => {
+    const list = await window.api?.getProfiles();
+    if (list) set({ profiles: list });
+    const active = await window.api?.getActiveProfile();
+    if (active) set({ activeProfileId: active.id });
+  },
+
+  activateProfile: async (id) => {
+    await window.api?.setActiveProfile(id);
+    set({ activeProfileId: id });
+  },
+
+  removeProfile: async (id) => {
+    await window.api?.deleteProfile(id);
+    const { activeProfileId } = get();
+    if (activeProfileId === id) set({ activeProfileId: null });
+    // Refresh list.
+    const list = await window.api?.getProfiles();
+    if (list) set({ profiles: list });
+  },
+
   // ── Settings ──
   settingsOpen: false,
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),

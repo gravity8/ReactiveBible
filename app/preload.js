@@ -35,6 +35,17 @@ contextBridge.exposeInMainWorld('api', {
   stopNetworkDisplay: () => ipcRenderer.invoke('stop-network-display'),
   getNetworkDisplayInfo: () => ipcRenderer.invoke('get-network-display-info'),
 
+  // Pastor profiles
+  getProfiles: () => ipcRenderer.invoke('get-profiles'),
+  getActiveProfile: () => ipcRenderer.invoke('get-active-profile'),
+  setActiveProfile: (id) => ipcRenderer.invoke('set-active-profile', id),
+  deleteProfile: (id) => ipcRenderer.invoke('delete-profile', id),
+  startCalibration: (opts) => ipcRenderer.invoke('start-calibration', opts),
+  cancelCalibration: () => ipcRenderer.invoke('cancel-calibration'),
+  onCalibrationProgress: (cb) => onChannel('calibration-progress', cb),
+  onCalibrationComplete: (cb) => onChannel('calibration-complete', cb),
+  onCalibrationError: (cb) => onChannel('calibration-error', cb),
+
   // Config and search
   getConfig: () => ipcRenderer.invoke('get-config'),
   searchVerse: (query, translation) => ipcRenderer.invoke('search-verse', query, translation),

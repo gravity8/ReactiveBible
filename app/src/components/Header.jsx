@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import useStore from '../store/useStore';
 import DisplayOutputs from './DisplayOutputs';
 
@@ -7,6 +7,14 @@ export default function Header() {
   const mode = useStore((s) => s.mode);
   const setMode = useStore((s) => s.setMode);
   const toggleSettings = useStore((s) => s.toggleSettings);
+  const toggleProfileModal = useStore((s) => s.toggleProfileModal);
+  const activeProfileId = useStore((s) => s.activeProfileId);
+  const profiles = useStore((s) => s.profiles);
+  const loadProfiles = useStore((s) => s.loadProfiles);
+
+  useEffect(() => { loadProfiles(); }, []);
+
+  const activeProfile = profiles.find((p) => p.id === activeProfileId);
 
   const handleToggleMode = () => {
     setMode(mode === 'online' ? 'offline' : 'online');
@@ -62,6 +70,33 @@ export default function Header() {
             background: isOnline ? '#00c853' : '#444',
           }} />
           {isOnline ? 'Online' : 'Offline'}
+        </button>
+
+        <button
+          onClick={toggleProfileModal}
+          title={activeProfile ? `Profile: ${activeProfile.name}` : 'No pastor profile active — click to manage'}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '3px 10px',
+            borderRadius: 12,
+            border: 'none',
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+            marginLeft: 6,
+            background: activeProfile ? 'rgba(20,184,166,0.15)' : 'rgba(255,255,255,0.05)',
+            color: activeProfile ? '#14b8a6' : '#555',
+          }}
+        >
+          {/* Person icon */}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          {activeProfile ? activeProfile.name : 'No Profile'}
         </button>
       </div>
 

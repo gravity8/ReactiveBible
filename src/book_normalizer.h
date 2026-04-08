@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <optional>
+#include <unordered_map>
 
 // Corrects garbled book names from Whisper STT to canonical Bible book names.
 // Uses edit distance + phonetic (Soundex) matching.
@@ -14,6 +15,9 @@ public:
 
     // Get the list of all canonical book names.
     static const std::vector<std::string>& canonicalBooks();
+
+    // Add runtime aliases (e.g. from a pastor profile's pronunciation map).
+    static void addAliases(const std::unordered_map<std::string, std::string>& extra);
 
 private:
     // Levenshtein edit distance (case-insensitive).

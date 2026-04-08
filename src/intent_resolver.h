@@ -32,6 +32,9 @@ public:
     IntentResult resolve(const std::string& windowText,
                          const std::string& contextJson = "{}");
 
+    // Append pastor-specific content to the LLM system prompt.
+    void setProfileExtension(const std::string& extension);
+
 private:
     std::string api_key_;
     std::string system_prompt_;

@@ -63,6 +63,7 @@ set(SOURCES
     src/book_normalizer.cpp
     src/context_resolver.cpp
     src/local_intent_resolver.cpp
+    src/pastor_profile.cpp
 )
 
 # ── Executable ───────────────────────────────────────────────
@@ -88,7 +89,24 @@ if(APPLE)
     )
 endif()
 
+# ── Whisper transcriber (batch tool for profile calibration) ──
+add_executable(whisper-transcriber src/transcriber_main.cpp)
+
+target_include_directories(whisper-transcriber PRIVATE
+    ${CMAKE_SOURCE_DIR}/third_party
+)
+
+target_link_libraries(whisper-transcriber PRIVATE whisper)
+
+if(APPLE)
+    target_link_libraries(whisper-transcriber PRIVATE
+        "-framework Accelerate"
+        "-framework CoreML"
+        "-framework Metal"
+    )
+endif()
+
 # ── Install ──────────────────────────────────────────────────
-install(TARGETS sermon-verse-detector DESTINATION bin)
+install(TARGETS sermon-verse-detector whisper-transcriber DESTINATION bin)
 install(FILES config.json DESTINATION bin)
 install(DIRECTORY bibles/ DESTINATION bin/bibles)

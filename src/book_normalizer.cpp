@@ -102,13 +102,10 @@ std::string BookNormalizer::soundex(const std::string& input) {
     return prefix + result;
 }
 
-std::optional<std::string> BookNormalizer::normalize(const std::string& input) {
-    if (input.empty()) return std::nullopt;
-
-    const auto& books = canonicalBooks();
-
-    // Known aliases — common Whisper misheard forms and abbreviations.
-    static const std::unordered_map<std::string, std::string> aliases = {
+// Mutable aliases map — initialized with built-in Whisper garbles,
+// extended at runtime by pastor profiles via addAliases().
+static std::unordered_map<std::string, std::string>& getMutableAliases() {
+    static std::unordered_map<std::string, std::string> aliases = {
         // Whisper garbles observed in testing
         {"ex-sudos", "Exodus"}, {"x2dos", "Exodus"}, {"exodos", "Exodus"},
         {"exedus", "Exodus"}, {"exidus", "Exodus"},
@@ -178,6 +175,21 @@ std::optional<std::string> BookNormalizer::normalize(const std::string& input) {
         {"heb", "Hebrews"}, {"jas", "James"}, {"pet", "1 Peter"},
         {"jud", "Jude"}, {"rev", "Revelation"},
     };
+    return aliases;
+}
+
+void BookNormalizer::addAliases(const std::unordered_map<std::string, std::string>& extra) {
+    auto& aliases = getMutableAliases();
+    for (const auto& [key, val] : extra) {
+        aliases[key] = val;
+    }
+}
+
+std::optional<std::string> BookNormalizer::normalize(const std::string& input) {
+    if (input.empty()) return std::nullopt;
+
+    const auto& books = canonicalBooks();
+    const auto& aliases = getMutableAliases();
 
     std::string lower = toLower(input);
 

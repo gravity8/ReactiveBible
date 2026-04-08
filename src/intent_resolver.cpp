@@ -126,6 +126,12 @@ IntentResolver::IntentResolver(const std::string& groqApiKey)
     curl_ = curl_easy_init();
 }
 
+void IntentResolver::setProfileExtension(const std::string& extension) {
+    if (!extension.empty()) {
+        system_prompt_ += "\n\n" + extension;
+    }
+}
+
 IntentResolver::~IntentResolver() {
     if (curl_) {
         curl_easy_cleanup(curl_);
