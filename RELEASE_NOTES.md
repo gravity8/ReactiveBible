@@ -1,7 +1,7 @@
-## What's New in v1.0.8
+## What's New in v1.0.9
 
 ### Bug Fix
-- **Fixed crash on launch** — the v1.0.7 release was missing three new modules (profile-manager, profile-analyzer, calibration-worker) from the packaged app, causing "Cannot find module './profile-manager'" on startup
+- **Fixed calibration crash** — replaced missing `uuid` npm package with built-in `crypto.randomUUID()`
 
 ### Improvements
-- **Packaging regression test** — added automated test that runs in CI before every build to verify all required modules are included in the packaged app
+- **Comprehensive pre-deployment tests** — `npm test` now runs 62 checks covering npm dependencies, C++ binary startup, Whisper model, Bible translations, config validation, and build assets

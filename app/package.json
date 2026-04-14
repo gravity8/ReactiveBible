@@ -1,6 +1,6 @@
 {
   "name": "reactivebible",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Real-time sermon verse detection and display",
   "main": "main.js",
   "scripts": {

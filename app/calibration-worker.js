@@ -2,7 +2,7 @@ const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const profileAnalyzer = require('./profile-analyzer');
 const profileManager = require('./profile-manager');
 
@@ -250,7 +250,7 @@ async function runCalibration({ name, urls, appPath, resourcesPath, biblesDir, o
   const modelPath = findModel(appPath, resourcesPath);
   const ffmpegPath = findFfmpeg();
 
-  const tempDir = path.join(os.tmpdir(), `reactivebible-calibration-${uuidv4()}`);
+  const tempDir = path.join(os.tmpdir(), `reactivebible-calibration-${crypto.randomUUID()}`);
   fs.mkdirSync(tempDir, { recursive: true });
 
   const total = urls.length;
