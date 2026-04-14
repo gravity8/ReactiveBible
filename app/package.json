@@ -1,6 +1,6 @@
 {
   "name": "reactivebible",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Real-time sermon verse detection and display",
   "main": "main.js",
   "scripts": {
@@ -9,7 +9,8 @@
     "build:mac": "vite build && electron-builder --mac",
     "build:win": "vite build && electron-builder --win",
     "build:linux": "vite build && electron-builder --linux",
-    "start": "vite build && electron ."
+    "start": "vite build && electron .",
+    "test": "node test-packaging.js"
   },
   "build": {
     "appId": "com.reactivebible.app",
@@ -27,6 +28,9 @@
       "bible-fetcher.js",
       "sync-server.js",
       "sync-client.js",
+      "profile-manager.js",
+      "profile-analyzer.js",
+      "calibration-worker.js",
       "build/icon.*",
       "dist/**/*"
     ],

@@ -24,6 +24,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.cache/
 
 # Third-party source (submodule or vendored)
 third_party/

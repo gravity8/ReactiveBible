@@ -82,6 +82,10 @@ jobs:
         working-directory: app
         run: npm ci
 
+      - name: Run packaging regression test
+        working-directory: app
+        run: node test-packaging.js
+
       - name: Create .env file
         shell: bash
         env:
