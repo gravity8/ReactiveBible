@@ -233,11 +233,13 @@ if (fs.existsSync(configPath)) {
 }
 
 // ══════════════════════════════════════════════════════════
-// Test 10: Vite build output exists
+// Test 10: Vite build output exists (skip in CI — build step comes after)
 // ══════════════════════════════════════════════════════════
-const distDir = path.join(APP_DIR, 'dist');
-check('VITE_BUILD', fs.existsSync(distDir) && fs.existsSync(path.join(distDir, 'index.html')),
-  `dist/index.html not found — run: npm run build (or vite build)`);
+if (!process.env.CI) {
+  const distDir = path.join(APP_DIR, 'dist');
+  check('VITE_BUILD', fs.existsSync(distDir) && fs.existsSync(path.join(distDir, 'index.html')),
+    `dist/index.html not found — run: npm run build (or vite build)`);
+}
 
 // ══════════════════════════════════════════════════════════
 // Test 11: display.html exists (projector window)
